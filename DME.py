@@ -16,12 +16,12 @@ class DMEStation:
         self.color_track = (0, 0, 255)
         self.color_search = (0, 255, 0)
         self.color = self.color_search
-        self.dme_image = pygame.image.load('dme_panel.png')
-        self.font = pygame.font.Font('dme_font.ttf', 40)
+        self.dme_image = pygame.image.load('images/dme_panel.png')
+        self.font = pygame.font.Font('fonts/dme_font.ttf', 40)
         self.frequencies_bands = frequencies_bands
         self.beacons = beacons
-        self.selected_beacon = 1
-        self.beacon_calls = [mixer.Sound(f'позывные/{i + 1}.mp3') for i in range(len(beacons))]
+        self.selected_beacon = 1 
+        self.beacon_calls = [mixer.Sound(f'mp3s/позывные/{i + 1}.mp3') for i in range(len(beacons))]
 
     def draw(self, screen, aircraft):
         # Draw DME panel
@@ -54,7 +54,7 @@ class DMEStation:
 
         pygame.draw.polygon(diagram_surface, color_DME, points)
         pygame.draw.circle(diagram_surface, color_DME, (self.x, self.y), self.radius, 1000)
-        pixel_color = diagram_surface.get_at((int(aircraft.x+50), int(aircraft.y)))
+        pixel_color = diagram_surface.get_at((int(aircraft.x), int(aircraft.y)))
         if pixel_color == self.color:
             # Aircraft is inside diagram
             if self.search_mode:
@@ -75,14 +75,37 @@ class DMEStation:
     def calculate_distance(self, aircraft):
         distance = math.sqrt((aircraft.x - self.x) ** 2 + (aircraft.y - 600) ** 2)
         return distance
-    
+class DDRMIIndicator:
+    def __init__(self, x, y,dme_station):
+        self.dme_station = dme_station
+        self.x = x
+        self.y = y
+        self.ddrmi_image = pygame.image.load('images/DDRMI/DDRMI_indicator.png')
+        self.ddrmi_image = pygame.transform.scale(self.ddrmi_image, (200, 200))
+        self.ddrmi_tumbler_L = pygame.image.load('images/DDRMI/DDRMI_tumbler_L.png')
+        self.ddrmi_tumbler_L = pygame.transform.scale(self.ddrmi_tumbler_L, (200, 200))
+        self.ddrmi_tumbler_R = pygame.image.load('images/DDRMI/DDRMI_tumbler_R.png')
+        self.ddrmi_tumbler_R = pygame.transform.scale(self.ddrmi_tumbler_R, (20, 20))
+
+    def draw(self,screen,aircraft):
+        screen.blit(self.ddrmi_image, (self.x, self.y))
+        screen.blit(self.ddrmi_tumbler_R, (self.x, self.y))
+        screen.blit(self.ddrmi_tumbler_L, (self.x, self.y))
+        
+
+        self.ddrmi_font = pygame.font.Font('fonts/dme_font.ttf', 22, )
+        ddrmi_text = self.ddrmi_font.render(f'{int(self.dme_station.calculate_distance(aircraft)//10):.1f}'.zfill(2), True, (255, 255, 255))
+        ddrmi_rect=ddrmi_text.get_rect(center=(370, 643))
+        screen.blit(ddrmi_text, ddrmi_rect)
+        
+        
 
 class PFDIndicator:
     def __init__(self, x, y,dme_station):
         self.dme_station = dme_station
         self.x = x
         self.y = y
-        self.horizon_image = pygame.image.load('horizon.png')
+        self.horizon_image = pygame.image.load('images/PFDth/horizon.png')
         self.horizon_image = pygame.transform.scale(self.horizon_image, (300, 300))
         self.vertical_speed = 0
         
@@ -101,9 +124,9 @@ class PFDIndicator:
         indicator_x = self.x
         indicator_y = self.y + (1 + normalized_speed/2) * 100
         
-        pfd_panel_image = pygame.image.load('pfd_panel1.png')
+        pfd_panel_image = pygame.image.load('images/PFDth/pfd_panel1.png')
         pfd_panel_image = pygame.transform.scale(pfd_panel_image, (300, 300))
-        self.speed_indicator_image = pygame.image.load('speed_pfd_panel.png')
+        self.speed_indicator_image = pygame.image.load('images/PFDth/speed_pfd_panel.png')
         self.speed_indicator_image = pygame.transform.scale(self.speed_indicator_image, (300, 300))
         screen.blit(self.horizon_image, (self.x, self.y-angle-12))
 
@@ -151,14 +174,14 @@ class PFDIndicator:
 class Menu:
     def __init__(self, screen,app):
         self.screen = screen
-        self.font = pygame.font.Font('menu_font.ttf', 32)#DME Simulator
-        self.font1 = pygame.font.Font('menu_font.ttf', 16)#by R.A. Rysovets
+        self.font = pygame.font.Font('fonts/menu_font.ttf', 32)#DME Simulator
+        self.font1 = pygame.font.Font('fonts/menu_font.ttf', 16)#by R.A. Rysovets
         self.options = ['Simulation', 'Map','Scheme','Settings', 'Exit']
         mixer.init()
-        mixer.music.load('background_music.mp3')
+        mixer.music.load('mp3s/background_music.mp3')
         mixer.music.set_volume(0.2)
         mixer.music.play(-1) #
-        self.simulation_sound = mixer.Sound('click.mp3')
+        self.simulation_sound = mixer.Sound('mp3s/click.mp3')
         self.selected_option = 0
         self.app = app
         
@@ -228,7 +251,7 @@ class Menu:
 
 class Aircraft:
     def __init__(self, x, y,width,height):
-        self.image = pygame.image.load('aircraft.png')
+        self.image = pygame.image.load('images/aircraft.png')
         self.image = pygame.transform.scale(self.image, (100, 40))
         self.x = x
         self.y = y
@@ -324,13 +347,13 @@ class DMEApp:
 
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
         pygame.display.set_caption("DME Simulator")
-        self.dme_scheme_image = pygame.image.load('scheme_dme.jpg')
-        self.map_image = pygame.image.load('map.png')
-        self.beacon_image = pygame.image.load('DME.png')
-        self.dme_image = pygame.image.load('dme_panel.png')
-        self.dme_font = pygame.font.Font('dme_font.ttf', 24)
+        self.dme_scheme_image = pygame.image.load('images/scheme_dme.jpg')
+        self.map_image = pygame.image.load('images/map.png')
+        self.beacon_image = pygame.image.load('images/DME.png')
+        self.dme_image = pygame.image.load('images/dme_panel.png')
+        self.dme_font = pygame.font.Font('fonts/dme_font.ttf', 24)
         self.clock = pygame.time.Clock()
-        icon = pygame.image.load('icon.png')
+        icon = pygame.image.load('images/icon.png')
         pygame.display.set_icon(icon)
       
 
@@ -338,6 +361,7 @@ class DMEApp:
         self.pfd_indicator = PFDIndicator(0, self.screen_width/2.4,self.dme_station)
         self.menu = Menu(self.screen, self)
         self.aircraft = Aircraft(100, 300,self.screen_width, self.screen_height)
+        self.ddrmi_indicator = DDRMIIndicator(300, self.screen_width/2.4+100,self.dme_station)
 
      
 
@@ -375,16 +399,17 @@ class DMEApp:
 
 
     def draw(self):
-        self.background_image = pygame.image.load('airport1.png')
+        self.background_image = pygame.image.load('images/airport1.png')
         self.background_image = pygame.transform.scale(self.background_image, (self.screen_width, self.screen_height))
         self.screen.blit(self.background_image, (0, 0))
         self.dme_station.draw(self.screen, self.aircraft)
         self.aircraft.draw(self.screen)
         self.pfd_indicator.draw(self.screen, self.aircraft)
+        self.ddrmi_indicator.draw(self.screen, self.aircraft)
         
         
         if self.menu_visible:
-            self.menu_image = pygame.image.load('menu.jpg')
+            self.menu_image = pygame.image.load('images/menu.jpg')
             self.menu_image = pygame.transform.scale(self.menu_image, (self.screen_width, self.screen_height))
             self.screen.blit(self.menu_image, (0, 0))
             self.menu.draw()
