@@ -20,7 +20,11 @@ class DMEStation:
         self.font = pygame.font.Font('fonts/dme_font.ttf', 40)
         self.frequencies_bands = frequencies_bands
         self.beacons = beacons
+
         self.selected_beacon = 1 
+
+        self.selected_beacon = 1
+
         self.beacon_calls = [mixer.Sound(f'mp3s/позывные/{i + 1}.mp3') for i in range(len(beacons))]
 
     def draw(self, screen, aircraft):
