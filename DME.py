@@ -87,14 +87,14 @@ class DDRMIIndicator:
         self.ddrmi_image = pygame.image.load('images/DDRMI/DDRMI_indicator.png')
         self.ddrmi_image = pygame.transform.scale(self.ddrmi_image, (200, 200))
         self.ddrmi_tumbler_L = pygame.image.load('images/DDRMI/DDRMI_tumbler_L.png')
-        self.ddrmi_tumbler_L = pygame.transform.scale(self.ddrmi_tumbler_L, (200, 200))
+        self.ddrmi_tumbler_L = pygame.transform.scale(self.ddrmi_tumbler_L, (20, 20))
         self.ddrmi_tumbler_R = pygame.image.load('images/DDRMI/DDRMI_tumbler_R.png')
         self.ddrmi_tumbler_R = pygame.transform.scale(self.ddrmi_tumbler_R, (20, 20))
 
     def draw(self,screen,aircraft):
         screen.blit(self.ddrmi_image, (self.x, self.y))
-        screen.blit(self.ddrmi_tumbler_R, (self.x, self.y))
-        screen.blit(self.ddrmi_tumbler_L, (self.x, self.y))
+        screen.blit(self.ddrmi_tumbler_R, (self.x+150, self.y+160))
+        screen.blit(self.ddrmi_tumbler_L, (self.x+40, self.y+160))
         
 
         self.ddrmi_font = pygame.font.Font('fonts/dme_font.ttf', 22, )
@@ -407,10 +407,9 @@ class DMEApp:
         self.background_image = pygame.transform.scale(self.background_image, (self.screen_width, self.screen_height))
         self.screen.blit(self.background_image, (0, 0))
         self.dme_station.draw(self.screen, self.aircraft)
-        self.aircraft.draw(self.screen)
         self.pfd_indicator.draw(self.screen, self.aircraft)
         self.ddrmi_indicator.draw(self.screen, self.aircraft)
-        
+        self.aircraft.draw(self.screen)
         
         if self.menu_visible:
             self.menu_image = pygame.image.load('images/menu.jpg')
