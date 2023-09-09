@@ -1,7 +1,7 @@
 import pygame
 import math
 from pygame import mixer
-
+import pygame_gui
 
 
 class DMEStation:
@@ -174,85 +174,82 @@ class PFDIndicator:
         
         pygame.draw.line(screen, color_of_vs_indication, (vs_indicator_x, vs_arrow_start_y), (vs_indicator_x-14, vs_arrow_end_y), 2) # рисуем стрелку
         
-        
 class Menu:
-    def __init__(self, screen,app):
+    def __init__(self, screen, app):
         self.screen = screen
-        self.font = pygame.font.Font('fonts/menu_font.ttf', 32)#DME Simulator
-        self.font1 = pygame.font.Font('fonts/menu_font.ttf', 16)#by R.A. Rysovets
-        self.options = ['Simulation', 'Map','Scheme','Settings', 'Exit']
+        self.app = app
+        self.manager = pygame_gui.UIManager((self.screen.get_width(), self.screen.get_height()),'menu.json')
+        self.show()
+        self.dme_scheme_image = pygame.image.load('images/scheme_dme.jpg')
+        # Загрузка музыки
         mixer.init()
         mixer.music.load('mp3s/background_music.mp3')
         mixer.music.set_volume(0.2)
-        mixer.music.play(-1) #
-        self.simulation_sound = mixer.Sound('mp3s/click.mp3')
-        self.selected_option = 0
-        self.app = app
-        
+        mixer.music.play(-1)
 
-    def draw(self):
+    def show(self):
+        self.options = ['Simulation', 'Map', 'Scheme', 'Settings', 'Exit']
+        self.buttons = []
         for i, option in enumerate(self.options):
-            color = (255, 255, 255) if i == self.selected_option else (100, 100, 100)
-            text = self.font.render(option, True, color)
-            text_rect = text.get_rect(center=(300, 200 + i * 50))
-            text3 = self.font.render(f"DME Simulator", True, (225, 235, 255))
-            text_rect3 = text3.get_rect(center=(300, 70))
-            text4 = self.font1.render(f"by RRysovets", True, (225, 235, 255))
-            text_rect4 = text4.get_rect(center=(1115, 790))
-            self.screen.blit(text4, text_rect4)
-            self.screen.blit(text3, text_rect3)
-            self.screen.blit(text, text_rect)
+            button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((220, 200 + i * 50), (200, 50)),
+                                                 text=option,
+                                                 manager=self.manager)
+            self.buttons.append(button)
+        self.app.menu_visible=True
 
     def handle_events(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP:
-                self.selected_option = (self.selected_option - 1) % len(self.options)
-            elif event.key == pygame.K_DOWN:
-                self.selected_option = (self.selected_option + 1) % len(self.options)
-            elif event.key == pygame.K_RETURN:
-                self.select_option()
-            elif event.key == pygame.K_ESCAPE:
-                self.app.simulation_started = False
-                self.app.menu_visible = True
-                self.app.show_dme_scheme = False
-                self.app.map_active = False
-        elif event.type == pygame.MOUSEBUTTONDOWN and self.app.menu_visible:
-            if event.button == 1: # левая кнопка мыши
-                for i, option in enumerate(self.options):
-                    text = self.font.render(option, True, (0, 0, 0))
-                    text_rect = text.get_rect(center=(300, 200 + i * 50))
-                    if text_rect.collidepoint(event.pos):
-                        self.selected_option = i
-                        self.select_option()
-                        break
-        elif event.type == pygame.MOUSEMOTION and self.app.menu_visible:
-            for i, option in enumerate(self.options):
-                text = self.font.render(option, True, (0, 0, 0))
-                text_rect = text.get_rect(center=(300, 200 + i * 50))
-                if text_rect.collidepoint(event.pos):
-                    self.selected_option = i
-                    break
+        if event.type == pygame.USEREVENT:
+            if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.ui_element == self.buttons[0]:
+                    self.app.simulation_started = True
+                    self.app.menu_visible = False
+                    
+                elif event.ui_element == self.buttons[1]:
+                    self.app.map_active = True
+                    self.app.menu_visible = False
+                    
+                elif event.ui_element == self.buttons[2]:
+                    self.app.show_dme_scheme = True
+                    self.app.menu_visible = False
+                    
+                elif event.ui_element == self.buttons[4]:
+                    pygame.quit()
+                    quit()
+                    
+        elif event.type == pygame.KEYDOWN:
+            if self.app.menu_visible == False:
+                if event.key == pygame.K_ESCAPE:
+                    self.app.simulation_started = False
+                    self.app.menu_visible = True
+                    self.app.show_dme_scheme = False
+                    self.app.map_active = False
+                    
+        self.manager.process_events(event)
 
+    def draw(self):
+        if self.app.menu_visible:
+            # Отображение текста с использованием шрифта
+            self.menu_image = pygame.image.load('images/menu.jpg')
+            self.menu_image = pygame.transform.scale(self.menu_image, (self.screen.get_width(), self.screen.get_height()))
+            self.screen.blit(self.menu_image, (0, 0))
+            font = pygame.font.Font('fonts/menu_font.ttf', 32)
+            text = font.render("DME Simulator", True, (225, 235, 255))
+            text_rect = text.get_rect(center=(300, 70))
+            self.screen.blit(text, text_rect)
+            
+            font1 = pygame.font.Font('fonts/menu_font.ttf', 16)
+            text4 = font1.render("by RRysovets", True, (225, 235, 255))
+            text_rect4 = text4.get_rect(center=(1115, 790))
+            self.screen.blit(text4, text_rect4)
+            self.manager.draw_ui(self.screen)
+        if self.app.show_dme_scheme:
+            self.screen.blit(self.dme_scheme_image, (0, 0))
+        # Отображение кнопок меню
+        
 
-
-    def select_option(self):
-        if self.selected_option == 0:
-            self.app.simulation_started = True
-            self.app.menu_visible = False
-            self.app.show_dme_scheme = False
-            self.app.map_active = False
-            self.simulation_sound.play()
-        elif self.selected_option == 1:
-            self.app.map_active = True
-            self.app.menu_visible = False
-            self.app.simulation_started = False
-        elif self.selected_option == 2:
-            self.app.show_dme_scheme = True
-            self.app.menu_visible = False
-        elif self.selected_option == 4:
-            pygame.quit()
-            quit()        
-
+    def update(self, time_delta):
+        self.manager.update(time_delta)
+        
 class Aircraft:
     def __init__(self, x, y,width,height):
         self.image = pygame.image.load('images/aircraft.png')
@@ -351,7 +348,7 @@ class DMEApp:
 
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
         pygame.display.set_caption("DME Simulator")
-        self.dme_scheme_image = pygame.image.load('images/scheme_dme.jpg')
+        
         self.map_image = pygame.image.load('images/map.png')
         self.beacon_image = pygame.image.load('images/DME.png')
         self.dme_image = pygame.image.load('images/dme_panel.png')
@@ -363,10 +360,10 @@ class DMEApp:
 
         self.dme_station = DMEStation(self.screen_width , self.screen_height, self.frequencies_bands, self.beacons)
         self.pfd_indicator = PFDIndicator(0, self.screen_width/2.4,self.dme_station)
-        self.menu = Menu(self.screen, self)
+        
         self.aircraft = Aircraft(100, 300,self.screen_width, self.screen_height)
         self.ddrmi_indicator = DDRMIIndicator(300, self.screen_width/2.4+100,self.dme_station)
-
+        self.menu = Menu(self.screen, self)
      
 
         
@@ -374,7 +371,7 @@ class DMEApp:
 
         self.show_dme_scheme = False
         self.simulation_started = False
-        self.menu_visible = True
+        
         self.map_active = False
 
 
@@ -399,6 +396,8 @@ class DMEApp:
         if self.simulation_started:
             self.aircraft.update_velocity(self.aircraft.accelerate, self.aircraft.brake, self.aircraft.turn_right, self.aircraft.turn_left)
             self.aircraft.update_position()
+        time_delta = self.clock.tick(60) / 100.0
+        self.menu.update(time_delta)
             
 
 
@@ -410,15 +409,9 @@ class DMEApp:
         self.pfd_indicator.draw(self.screen, self.aircraft)
         self.ddrmi_indicator.draw(self.screen, self.aircraft)
         self.aircraft.draw(self.screen)
-        
-        if self.menu_visible:
-            self.menu_image = pygame.image.load('images/menu.jpg')
-            self.menu_image = pygame.transform.scale(self.menu_image, (self.screen_width, self.screen_height))
-            self.screen.blit(self.menu_image, (0, 0))
-            self.menu.draw()
+        self.menu.draw()
 
-        if self.show_dme_scheme:
-            self.screen.blit(self.dme_scheme_image, (0, 0))
+        
 
         if self.map_active:
             self.screen.blit(self.map_image, (0, 0))
