@@ -3,8 +3,8 @@
     {
         "colours":
         {
-            "normal_bg": "#25292e",
-            "hovered_bg": "#35393e",
+            "normal_bg":"#25292e00",
+            "hovered_bg": "#35393e22",
             "disabled_bg": "#25292e",
             "selected_bg": "#25292e",
             "active_bg": "#25292e",
@@ -28,7 +28,7 @@
         {
             "name": "menu_font",
             "size": "30",
-            "regular_path" :"menu_font.TTF" 
+            "regular_path" :"fonts/menu_font.TTF" 
             
         },
         "misc":

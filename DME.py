@@ -4,9 +4,10 @@ from pygame import mixer
 import pygame_gui
 
 
+
 class DMEStation:
 
-    def __init__(self, x, y, frequencies_bands, beacons):
+    def __init__(self, x, y):
         self.div=2
         self.x = x//self.div
         self.y = y//self.div
@@ -18,14 +19,21 @@ class DMEStation:
         self.color = self.color_search
         self.dme_image = pygame.image.load('images/dme_panel.png')
         self.font = pygame.font.Font('fonts/dme_font.ttf', 40)
-        self.frequencies_bands = frequencies_bands
-        self.beacons = beacons
-
+        self.beacons = [
+            (500, 380),
+            (700, 400),
+            (300, 480),
+            (750, 620),
+        ]
+        self.frequencies_bands = [
+            108.1,
+            108.8,
+            108.3,
+            108.4
+        ]
+        
         self.selected_beacon = 1 
-
-        self.selected_beacon = 1
-
-        self.beacon_calls = [mixer.Sound(f'mp3s/позывные/{i + 1}.mp3') for i in range(len(beacons))]
+        self.beacon_calls = [mixer.Sound(f'mp3s/позывные/{i + 1}.mp3') for i in range(len(self.beacons))]
 
     def draw(self, screen, aircraft):
         # Draw DME panel
@@ -80,26 +88,51 @@ class DMEStation:
         distance = math.sqrt((aircraft.x - self.x) ** 2 + (aircraft.y - 600) ** 2)
         return distance
 class DDRMIIndicator:
-    def __init__(self, x, y,dme_station):
+    def __init__(self, x, y, dme_station):
         self.dme_station = dme_station
         self.x = x
         self.y = y
-        self.ddrmi_image = pygame.image.load('images/DDRMI/DDRMI_indicator.png')
-        self.ddrmi_image = pygame.transform.scale(self.ddrmi_image, (200, 200))
-        self.ddrmi_tumbler_L = pygame.image.load('images/DDRMI/DDRMI_tumbler_L.png')
-        self.ddrmi_tumbler_L = pygame.transform.scale(self.ddrmi_tumbler_L, (20, 20))
-        self.ddrmi_tumbler_R = pygame.image.load('images/DDRMI/DDRMI_tumbler_R.png')
-        self.ddrmi_tumbler_R = pygame.transform.scale(self.ddrmi_tumbler_R, (20, 20))
+        self.state = 0  # Добавляем состояние тумблера
 
-    def draw(self,screen,aircraft):
+        self.ddrmi_image = self.load_image('images/DDRMI/DDRMI_indicator.png', 200, 200)
+        self.ddrmi_tumbler_L = self.load_image('images/DDRMI/DDRMI_tumbler_L.png', 30, 35)
+        self.ddrmi_tumbler_R = self.load_image('images/DDRMI/DDRMI_tumbler_R.png', 30, 35)
+
+        # Создаем прямоугольники для обработки кликов мыши
+        self.rect_L = self.ddrmi_tumbler_L.get_rect(topleft=(self.x + 20, self.y + 150))
+        self.rect_R = self.ddrmi_tumbler_R.get_rect(topleft=(self.x + 160, self.y + 150))
+
+        self.ddrmi_font = pygame.font.Font('fonts/dme_font.ttf', 22)
+
+    def load_image(self, path, width, height):
+        image = pygame.image.load(path)
+        return pygame.transform.scale(image, (width, height))
+
+    def handle_events(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.rect_L.collidepoint(event.pos):
+                if self.state == 0:
+                    self.ddrmi_tumbler_L = pygame.transform.rotate(self.ddrmi_tumbler_L, -90)
+                    self.state = 1
+                else:
+                    self.ddrmi_tumbler_L = pygame.transform.rotate(self.ddrmi_tumbler_L, 90)
+                    self.state = 0
+            elif self.rect_R.collidepoint(event.pos):
+                if self.state == 0:
+                    self.ddrmi_tumbler_R = pygame.transform.rotate(self.ddrmi_tumbler_R, 90)
+                    self.state = 1
+                else:
+                    self.ddrmi_tumbler_R = pygame.transform.rotate(self.ddrmi_tumbler_R, -90)
+                    self.state = 0
+
+    def draw(self, screen, aircraft):
         screen.blit(self.ddrmi_image, (self.x, self.y))
-        screen.blit(self.ddrmi_tumbler_R, (self.x+150, self.y+160))
-        screen.blit(self.ddrmi_tumbler_L, (self.x+40, self.y+160))
-        
+        screen.blit(self.ddrmi_tumbler_R, (self.x + 157, self.y + 150))
+        screen.blit(self.ddrmi_tumbler_L, (self.x + 20, self.y + 150))
 
-        self.ddrmi_font = pygame.font.Font('fonts/dme_font.ttf', 22, )
-        ddrmi_text = self.ddrmi_font.render(f'{int(self.dme_station.calculate_distance(aircraft)//10):.1f}'.zfill(2), True, (255, 255, 255))
-        ddrmi_rect=ddrmi_text.get_rect(center=(370, 643))
+        distance = int(self.dme_station.calculate_distance(aircraft) // 10)
+        ddrmi_text = self.ddrmi_font.render(f'{distance:.1f}'.zfill(2), True, (255, 255, 255))
+        ddrmi_rect = ddrmi_text.get_rect(center=(370, 643))
         screen.blit(ddrmi_text, ddrmi_rect)
         
         
@@ -175,47 +208,53 @@ class PFDIndicator:
         pygame.draw.line(screen, color_of_vs_indication, (vs_indicator_x, vs_arrow_start_y), (vs_indicator_x-14, vs_arrow_end_y), 2) # рисуем стрелку
         
 class Menu:
-    def __init__(self, screen, app):
+    def __init__(self, screen, app, dme_station):
+        
         self.screen = screen
         self.app = app
-        self.manager = pygame_gui.UIManager((self.screen.get_width(), self.screen.get_height()),'menu.json')
+        self.app.simulation_started = False
+        self.app.menu_visible = True
+        self.app.show_dme_scheme = False
+        self.app.map_active = False
+        self.beacons=dme_station.beacons
+        self.frequencies_bands=dme_station.frequencies_bands
+        self.manager = pygame_gui.UIManager((self.screen.get_width(), self.screen.get_height()),'configuration/menu.json')
         self.show()
         self.dme_scheme_image = pygame.image.load('images/scheme_dme.jpg')
-        # Загрузка музыки
-        mixer.init()
-        mixer.music.load('mp3s/background_music.mp3')
-        mixer.music.set_volume(0.2)
-        mixer.music.play(-1)
+        self.map_image = pygame.image.load('images/map.png')
+        self.beacon_image = pygame.image.load('images/DME.png')
+        self.menu_image = pygame.image.load('images/menu.jpg')
+        self.dme_font = pygame.font.Font('fonts/dme_font.ttf', 24)
+        self.menu_image = pygame.transform.scale(self.menu_image, (self.screen.get_width(), self.screen.get_height()))
 
     def show(self):
         self.options = ['Simulation', 'Map', 'Scheme', 'Settings', 'Exit']
         self.buttons = []
         for i, option in enumerate(self.options):
-            button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((220, 200 + i * 50), (200, 50)),
-                                                 text=option,
-                                                 manager=self.manager)
+            button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((220, 200 + i * 55), (200, 50)),text=option, manager=self.manager)
             self.buttons.append(button)
         self.app.menu_visible=True
 
     def handle_events(self, event):
         if event.type == pygame.USEREVENT:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                if event.ui_element == self.buttons[0]:
-                    self.app.simulation_started = True
-                    self.app.menu_visible = False
-                    
-                elif event.ui_element == self.buttons[1]:
-                    self.app.map_active = True
-                    self.app.menu_visible = False
-                    
-                elif event.ui_element == self.buttons[2]:
-                    self.app.show_dme_scheme = True
-                    self.app.menu_visible = False
-                    
-                elif event.ui_element == self.buttons[4]:
-                    pygame.quit()
-                    quit()
-                    
+                if self.app.menu_visible:
+                    if event.ui_element == self.buttons[0]:
+                        self.app.simulation_started = True
+                        self.app.menu_visible = False
+                        
+                    elif event.ui_element == self.buttons[1]:
+                        self.app.map_active = True
+                        self.app.menu_visible = False
+                        
+                    elif event.ui_element == self.buttons[2]:
+                        self.app.show_dme_scheme = True
+                        self.app.menu_visible = False
+                        
+                    elif event.ui_element == self.buttons[4]:
+                        pygame.quit()
+                        quit()
+                        
         elif event.type == pygame.KEYDOWN:
             if self.app.menu_visible == False:
                 if event.key == pygame.K_ESCAPE:
@@ -223,28 +262,50 @@ class Menu:
                     self.app.menu_visible = True
                     self.app.show_dme_scheme = False
                     self.app.map_active = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+                if self.app.map_active:
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+                    for i, beacon in enumerate(self.beacons):
+                        beacon_x, beacon_y = beacon
+                        beacon_width, beacon_height = self.beacon_image.get_size()
+                        if beacon_x <= mouse_x <= beacon_x + beacon_width and beacon_y <= mouse_y <= beacon_y + beacon_height:
+                            self.dme_station.selected_beacon = i
+                            break
+        elif event.type == pygame.QUIT:
+            pygame.quit()
+            quit()
                     
         self.manager.process_events(event)
 
-    def draw(self):
+    def draw(self,dme_station):
+        self.dme_station=dme_station
         if self.app.menu_visible:
-            # Отображение текста с использованием шрифта
-            self.menu_image = pygame.image.load('images/menu.jpg')
-            self.menu_image = pygame.transform.scale(self.menu_image, (self.screen.get_width(), self.screen.get_height()))
             self.screen.blit(self.menu_image, (0, 0))
             font = pygame.font.Font('fonts/menu_font.ttf', 32)
-            text = font.render("DME Simulator", True, (225, 235, 255))
-            text_rect = text.get_rect(center=(300, 70))
-            self.screen.blit(text, text_rect)
-            
+            info_text = font.render("DME Simulator", True, (225, 235, 255))
+            info_text_rect = info_text.get_rect(center=(300, 70))
+            self.screen.blit(info_text, info_text_rect)
             font1 = pygame.font.Font('fonts/menu_font.ttf', 16)
             text4 = font1.render("by RRysovets", True, (225, 235, 255))
             text_rect4 = text4.get_rect(center=(1115, 790))
             self.screen.blit(text4, text_rect4)
             self.manager.draw_ui(self.screen)
+
         if self.app.show_dme_scheme:
             self.screen.blit(self.dme_scheme_image, (0, 0))
-        # Отображение кнопок меню
+
+        if self.app.map_active:
+            self.screen.blit(self.map_image, (0, 0))
+            for i, beacon in enumerate(self.beacons):
+                self.screen.blit(self.beacon_image, beacon)
+                self.beacon_image = pygame.transform.scale(self.beacon_image, (50, 50))
+                frequency_color = (255, 0, 0) if i == self.dme_station.selected_beacon else (255, 255, 255)
+                frequency_text = f"{self.frequencies_bands[i]} MHz"
+                frequency_text_render = self.dme_font.render(frequency_text, True, frequency_color)
+                frequency_text_rect = frequency_text_render.get_rect(center=(beacon[0] + self.beacon_image.get_width() / 2, beacon[1] - 20))
+                self.screen.blit(frequency_text_render, frequency_text_rect)
+        
+        
         
 
     def update(self, time_delta):
@@ -327,70 +388,39 @@ class DMEApp:
     def __init__(self):
 
         pygame.init()
-        mixer.init()
-
         self.screen_width = 1200
         self.screen_height = 800
-        
-        self.beacons = [
-            (500, 380),
-            (700, 400),
-            (300, 480),
-            (750, 620),
-
-        ]
-        self.frequencies_bands = [
-            108.1,
-            108.8,
-            108.3,
-            108.4
-        ]
-
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
         pygame.display.set_caption("DME Simulator")
-        
-        self.map_image = pygame.image.load('images/map.png')
-        self.beacon_image = pygame.image.load('images/DME.png')
         self.dme_image = pygame.image.load('images/dme_panel.png')
-        self.dme_font = pygame.font.Font('fonts/dme_font.ttf', 24)
-        self.clock = pygame.time.Clock()
         icon = pygame.image.load('images/icon.png')
+        self.clock = pygame.time.Clock()
         pygame.display.set_icon(icon)
-      
-
-        self.dme_station = DMEStation(self.screen_width , self.screen_height, self.frequencies_bands, self.beacons)
+        self.dme_station = DMEStation(self.screen_width , self.screen_height)
         self.pfd_indicator = PFDIndicator(0, self.screen_width/2.4,self.dme_station)
-        
         self.aircraft = Aircraft(100, 300,self.screen_width, self.screen_height)
         self.ddrmi_indicator = DDRMIIndicator(300, self.screen_width/2.4+100,self.dme_station)
-        self.menu = Menu(self.screen, self)
-     
-
-        
-        
-
-        self.show_dme_scheme = False
+        self.menu = Menu(self.screen, self,self.dme_station)
         self.simulation_started = False
         
-        self.map_active = False
+        
 
+    def boolshit(self):
+        """вспомогательные штуки"""
+        self.font = pygame.font.Font(None, 24)
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        mouse_text = f"({mouse_x}, {mouse_y})"
+        mouse_text_render = self.font.render(mouse_text, True, (255, 255, 255))
+        self.screen.blit(mouse_text_render, (mouse_x + 10, mouse_y))
+        angle_text = f"Angle: {self.aircraft.angle:.2f}"
+        angle_text_render = self.font.render(angle_text, True, (255, 255, 255))
+        self.screen.blit(angle_text_render, (10, 10))
 
     def handle_events(self):
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_x, mouse_y = pygame.mouse.get_pos()
-                for i, beacon in enumerate(self.beacons):
-                    beacon_x, beacon_y = beacon
-                    beacon_width, beacon_height = self.beacon_image.get_size()
-                    if beacon_x <= mouse_x <= beacon_x + beacon_width and beacon_y <= mouse_y <= beacon_y + beacon_height:
-                        self.dme_station.selected_beacon = i
-                        break
-            
             self.aircraft.handle_events(event)
             self.menu.handle_events(event)
+            self.ddrmi_indicator.handle_events(event)
 
     def update(self):
         if self.simulation_started:
@@ -409,34 +439,11 @@ class DMEApp:
         self.pfd_indicator.draw(self.screen, self.aircraft)
         self.ddrmi_indicator.draw(self.screen, self.aircraft)
         self.aircraft.draw(self.screen)
-        self.menu.draw()
-
-        
-
-        if self.map_active:
-            self.screen.blit(self.map_image, (0, 0))
-            for i, beacon in enumerate(self.beacons):
-                self.screen.blit(self.beacon_image, beacon)
-                self.beacon_image = pygame.transform.scale(self.beacon_image, (50, 50))
-                frequency_color = (255, 0, 0) if i == self.dme_station.selected_beacon else (255, 255, 255)
-                frequency_text = f"{self.frequencies_bands[i]} MHz"
-                frequency_text_render = self.dme_font.render(frequency_text, True, frequency_color)
-                frequency_text_rect = frequency_text_render.get_rect(center=(beacon[0] + self.beacon_image.get_width() / 2, beacon[1] - 20))
-                self.screen.blit(frequency_text_render, frequency_text_rect)
-        
-            
-        """вспомогательные штуки"""
-        self.font = pygame.font.Font(None, 24)
-        mouse_x, mouse_y = pygame.mouse.get_pos()
-        mouse_text = f"({mouse_x}, {mouse_y})"
-        mouse_text_render = self.font.render(mouse_text, True, (255, 255, 255))
-        self.screen.blit(mouse_text_render, (mouse_x + 10, mouse_y))
-        angle_text = f"Angle: {self.aircraft.angle:.2f}"
-        angle_text_render = self.font.render(angle_text, True, (255, 255, 255))
-        self.screen.blit(angle_text_render, (10, 10))
-
+        self.menu.draw(self.dme_station)
+        self.boolshit()
         pygame.display.update()
-        
+    
+
 
     def run(self):
         running = True
