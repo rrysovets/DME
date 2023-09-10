@@ -470,7 +470,7 @@ class DMEApp:
         self.ddrmi_indicator.draw(self.screen, self.aircraft)
         self.aircraft.draw(self.screen)
         self.menu.draw(self.dme_station)
-        #self.boolshit()#угол, координаты
+        self.boolshit()#угол, координаты
         pygame.display.update()
     
 
