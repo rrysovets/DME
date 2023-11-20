@@ -2,6 +2,7 @@ import pygame
 import math
 from pygame import mixer
 import pygame_gui
+import os
 
 
 class DMEStation:
@@ -33,7 +34,7 @@ class DMEStation:
         self.selected_beacon = 1
         self.beacon_calls = [mixer.Sound(
             f'mp3s/позывные/{i + 1}.mp3') for i in range(len(self.beacons))]
-
+    
     def draw(self, screen, aircraft):
 
         if self.track_mode:
@@ -72,7 +73,7 @@ class DMEStation:
                 self.color = self.color_search
 
         screen.blit(diagram_surface, (0, 0))
-
+    
     def calculate_distance(self, aircraft):
         distance = math.sqrt((aircraft.x - self.x) **
                              2 + (aircraft.y - 600) ** 2)
@@ -147,23 +148,22 @@ class PFDIndicator:
         self.horizon_image = pygame.transform.scale(
             self.horizon_image, (300, 300))
         self.vertical_speed = 0
-        self.font = pygame.font.Font(None, 24)  # Выберите нужный шрифт
-        self.numbers = [self.font.render(str(i), True, (255, 255, 255)) for i in range(
-            100, 999, 10)]  # Список изображений чисел от 1 до 100
-        self.position = 100.0
+        self.font = pygame.font.Font(None, 15)  # Выберите нужный шрифт
+        self.numbers = [self.font.render(str(abs(i)), True, (255, 255, 255)) for i in range(
+            100, 400, 10)]  # Список изображений чисел от 1 до 100
+        self.position = 0
 
     def speed_indication(self, screen, aircraft):
         speed = aircraft.speed
         start = int(self.position)
-        for i in range(start, start + 10):  # Отображаем 10 чисел
-            number_image = self.numbers[i % len(self.numbers)]
+        for i in range(start, start+100 ):  # Отображаем 10 чисел
+            number_image = self.numbers[-((i-10) % len(self.numbers))]
             y = (i - self.position) * number_image.get_height() + 10
             if i % 2 == 0:  # Отображаем только каждое второе число
-                screen.blit(number_image, (100, y))
-            pygame.draw.line(screen, (255, 255, 255), (140, y + number_image.get_height() // 2),
-                             (150, y + number_image.get_height() // 2))  # Рисуем риску справа от числа
-        diff = speed*1 - self.position
-        self.position += diff * 0.1
+                screen.blit(number_image, (25, y+550))
+            pygame.draw.line(screen, (255, 255, 255), (45, y +550 +  number_image.get_height() // 2),(49, y +550 + number_image.get_height() // 2))  # Рисуем риску справа от числа
+        diff = speed*3 + self.position
+        self.position -= diff * 0.2
 
     def vs_speed_indication(self, screen, aircraft):
         self.vertical_speed = aircraft.speed * \
@@ -226,21 +226,18 @@ class PFDIndicator:
         normalized_speed = (speed - min_speed) / speed_range
         indicator_x = self.x
         indicator_y = self.y + (1 + normalized_speed/2) * 100
-
+        
         pfd_panel_image = pygame.image.load('images/PFDth/pfd_panel1.png')
         pfd_panel_image = pygame.transform.scale(pfd_panel_image, (300, 300))
-        self.speed_indicator_image = pygame.image.load(
-            'images/PFDth/speed_pfd_panel.png')
-        self.speed_indicator_image = pygame.transform.scale(
-            self.speed_indicator_image, (300, 300))
+        #self.speed_indicator_image = pygame.image.load('images/PFDth/speed_pfd_panel.png')
+        #self.speed_indicator_image = pygame.transform.scale(self.speed_indicator_image, (300, 300))
         screen.blit(self.horizon_image, (self.x, self.y-angle-12))
-
-        screen.blit(self.speed_indicator_image, (indicator_x,
-                    indicator_y-140), area=(0, -50, 1200, 800))
+        pygame.draw.rect(screen, (123, 142, 146), (24, 570, 30, 600))
+        self.speed_indication(screen, aircraft)
+        #screen.blit(self.speed_indicator_image, (indicator_x,indicator_y-140), area=(0, -50, 1200, 800))
 
         screen.blit(pfd_panel_image, (self.x, self.y))
-
-        self.speed_indication(screen, aircraft)
+        
         self.vs_speed_indication(screen, aircraft)
         self.dme_indication(screen, aircraft)
 
@@ -268,7 +265,7 @@ class Menu:
             self.menu_image, (self.screen.get_width(), self.screen.get_height()))
 
     def show(self):
-        self.options = ['Simulation', 'Map', 'Scheme', 'Settings', 'Exit']
+        self.options = ['Simulation', 'Map', 'Scheme', 'Circuit','Circuit description', 'Exit']
         self.buttons = []
         for i, option in enumerate(self.options):
             button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect(
@@ -291,8 +288,11 @@ class Menu:
                     elif event.ui_element == self.buttons[2]:
                         self.app.show_dme_scheme = True
                         self.app.menu_visible = False
-
+                        
                     elif event.ui_element == self.buttons[4]:
+                        os.startfile('dme.pdf')
+
+                    elif event.ui_element == self.buttons[5]:
                         pygame.quit()
                         quit()
 
@@ -317,7 +317,7 @@ class Menu:
             quit()
 
         self.manager.process_events(event)
-
+    
     def draw(self, dme_station):
         self.dme_station = dme_station
         if self.app.menu_visible:
@@ -355,22 +355,17 @@ class Menu:
 
 
 class Aircraft:
-    def __init__(self, x, y, width, height):
+    def __init__(self, width, height):
         self.image = pygame.image.load('images/aircraft.png')
         self.image = pygame.transform.scale(self.image, (100, 40))
-        self.x = x
-        self.y = y
-        self.angle = 0
-        self.speed = 0
+        self.x = 100
+        self.y = 300
+        self.angle = self.speed = 0
         self.min_speed = 0.7
         self.max_speed = 5
-        self.acceleration = 0.02
-        self.deceleration = 0.02
+        self.acceleration = self.deceleration = 0.02
         self.turn_speed = 0.5
-        self.accelerate = False
-        self.brake = False
-        self.turn_left = False
-        self.turn_right = False
+        self.accelerate = self.brake = self.turn_left = self.turn_right = False
         self.height = height
         self.width = width
 
@@ -407,15 +402,15 @@ class Aircraft:
         elif self.y < 0:
             self.y = self.height
 
-    def update_velocity(self, accelerate, brake, turn_left, turn_right):
-        if accelerate:
+    def update_velocity(self):
+        if self.accelerate:
             self.speed += self.acceleration
-        if brake:
+        if self.brake:
             self.speed -= self.deceleration
-        if turn_left:
+        if self.turn_right:
             if self.angle < 25:
                 self.angle += self.turn_speed
-        if turn_right:
+        if self.turn_left:
             if self.angle > -25:
                 self.angle -= self.turn_speed
 
@@ -434,23 +429,18 @@ class DMEApp:
         pygame.init()
         self.screen_width = 1200
         self.screen_height = 800
-        self.screen = pygame.display.set_mode(
-            (self.screen_width, self.screen_height))
+        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
         pygame.display.set_caption("DME Simulator")
         self.dme_image = pygame.image.load('images/dme_panel.png')
         icon = pygame.image.load('images/icon.png')
         self.clock = pygame.time.Clock()
         pygame.display.set_icon(icon)
         self.dme_station = DMEStation(self.screen_width, self.screen_height)
-        self.aircraft = Aircraft(
-            100, 300, self.screen_width, self.screen_height)
-        self.pfd_indicator = PFDIndicator(
-            0, self.screen_width/2.4, self.dme_station)
-        self.ddrmi_indicator = DDRMIIndicator(
-            300, self.screen_width/2.4+100, self.dme_station)
+        self.aircraft = Aircraft(self.screen_width, self.screen_height)
+        self.pfd_indicator = PFDIndicator(0, self.screen_width/2.4, self.dme_station)
+        self.ddrmi_indicator = DDRMIIndicator(300, self.screen_width/2.4+100, self.dme_station)
         self.menu = Menu(self.screen, self, self.dme_station)
-        self.simulation_started = False
-
+    
     def boolshit(self):
         """вспомогательные штуки"""
         self.font = pygame.font.Font(None, 24)
@@ -469,10 +459,9 @@ class DMEApp:
             self.ddrmi_indicator.handle_events(event)
 
     def update(self):
-        if self.simulation_started:
-            self.aircraft.update_velocity(
-                self.aircraft.accelerate, self.aircraft.brake, self.aircraft.turn_right, self.aircraft.turn_left)
-            self.aircraft.update_position()
+
+        self.aircraft.update_velocity()
+        self.aircraft.update_position()
         time_delta = self.clock.tick(60) / 100.0
         self.menu.update(time_delta)
 
