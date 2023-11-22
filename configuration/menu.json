@@ -13,7 +13,7 @@
             "selected_text": "#FFFFFF",
             "disabled_text": "#6d736f",
             "active_text": "#6d736f",
-            "normal_border": "#AAAAAA",
+            "normal_border": "#00000000",
             "hovered_border": "#B0B0B0",
             "disabled_border": "#808080",
             "selected_border": "#8080B0",
@@ -27,7 +27,7 @@
         "font":
         {
             "name": "menu_font",
-            "size": "30",
+            "size": "34",
             "regular_path" :"fonts/menu_font.TTF" 
             
         },
