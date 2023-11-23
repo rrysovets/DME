@@ -18,7 +18,7 @@ SCHEME_OPTIONS = (
 
 
 CIRCUIT_DESCRIPTIONS=("""большое описание схемы на несколько строк
-                                   да да да""",
+                                   вторая строка""",
                                    'dsfdsfsdfsdfsd',
                                    'fdsfsdfsd2',
                                    'fdsfsdfsd3',

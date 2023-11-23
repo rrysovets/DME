@@ -7,13 +7,13 @@ from data import *
 
 
 class DMEStation:
-    div=2
-    x = SCREEN_WIDTH//div
-    y = SCREEN_HEIGHT//div
+    DIV = 2
+    x = SCREEN_WIDTH//DIV
+    y = SCREEN_HEIGHT//DIV
     selected_beacon = 1
+
     def __init__(self):
-        
-        
+
         self.radius = 100
         self.track_mode = False
         self.search_mode = True
@@ -22,9 +22,7 @@ class DMEStation:
         self.color = self.color_search
 
         self.font = pygame.font.Font('fonts/dme_font.ttf', 40)
-        
 
-        
         self.beacon_calls = [mixer.Sound(
             f'mp3s/позывные/{i + 1}.mp3') for i in range(len(BEACONS))]
 
@@ -38,11 +36,11 @@ class DMEStation:
 
         left_point = (self.x - self.radius, self.y)
         right_point = (self.x + self.radius, self.y)
-        top_point = (self.x, self.y*self.div)
+        top_point = (self.x, self.y*self.DIV)
         points = [left_point, right_point, top_point]
 
         diagram_surface = pygame.Surface(
-            (self.x*self.div, self.y*self.div), pygame.SRCALPHA)
+            (self.x*self.DIV, self.y*self.DIV), pygame.SRCALPHA)
         diagram_surface.set_alpha(64)
 
         pygame.draw.polygon(diagram_surface, color_DME, points)
@@ -68,8 +66,8 @@ class DMEStation:
         screen.blit(diagram_surface, (0, 0))
 
     @classmethod
-    def calculate_distance(cls,aircraft):
-        distance = math.sqrt((aircraft.x - SCREEN_WIDTH//cls.div) **
+    def calculate_distance(cls, aircraft):
+        distance = math.sqrt((aircraft.x - SCREEN_WIDTH//cls.DIV) **
                              2 + (aircraft.y - 600) ** 2)
         return distance
 
@@ -135,14 +133,15 @@ class DDRMIIndicator:
 
 class PFDIndicator:
     def __init__(self):
-        
+
         self.x = 0
         self.y = SCREEN_WIDTH/2.4
         self.horizon_image = pygame.image.load('images/PFDth/horizon.png')
         self.horizon_image = pygame.transform.scale(
             self.horizon_image, (300, 300))
         self.vertical_speed = 0
-        self.font = pygame.font.Font(None, 15)  # Выберите нужный шрифт
+        self.font = pygame.font.Font(None, 15)  
+        self.height_font=pygame.font.Font(None, 18)  
         self.numbers = [self.font.render(str(abs(i)), True, (255, 255, 255)) for i in range(
             100, 400, 10)]  # Список изображений чисел от 1 до 100
         self.position = 0
@@ -209,6 +208,34 @@ class PFDIndicator:
                 f"{frequency} ", True, (203, 0, 125))
             text_rect_frequency = text_frequency.get_rect(center=(32, 762))
             screen.blit(text_frequency, text_rect_frequency)
+            
+    def height_indication(self,screen,aircraft):
+        
+        
+        numbers = [self.height_font.render(str(abs(i)).zfill(2), True, (0, 255, 0)) for i in range(
+            00, 100, 10)]
+        
+        self.button_rect = pygame.draw.rect(
+                    screen, (123, 142, 146), ((215, 585), (21, 135)))
+        self.button_rect = pygame.draw.rect(
+                    screen, (0, 0, 0), ((215, 645), (20, 15)))
+        self.button_rect = pygame.draw.rect(
+                    screen, (0, 0, 0), ((235, 642), (16, 22)))
+        for i in range(5):
+            
+            height=int(4000-aircraft.y)
+            str_height=f"{4000-aircraft.y:.0f}"
+            
+            first_pfd_text=self.height_font.render(str_height[0:2],True,(0,255,0))
+            pfd_text=self.height_font.render(str(height%98+i).zfill(2),True,(0,255,0))
+            first_pfd_rect = first_pfd_text.get_rect(center=(225, 655))
+            
+            wrapper_text=self.font.render(str(int(str_height[0:2])+i), True, (255, 255, 255))
+            
+            
+            screen.blit(pfd_text, (236, 613+i*10+(height%98)%10))
+            screen.blit(wrapper_text,(216, 613+i*50+(height//98)%10))
+            screen.blit(first_pfd_text, first_pfd_rect)
 
     def draw(self, screen, aircraft):
 
@@ -230,30 +257,31 @@ class PFDIndicator:
         pygame.draw.rect(screen, (123, 142, 146), (24, 570, 30, 600))
         self.speed_indication(screen, aircraft)
         # screen.blit(self.speed_indicator_image, (indicator_x,indicator_y-140), area=(0, -50, 1200, 800))
-
+        self.height_indication(screen,aircraft)
         screen.blit(pfd_panel_image, (self.x, self.y))
 
         self.vs_speed_indication(screen, aircraft)
         self.dme_indication(screen, aircraft)
+        
 
 
 class Menu:
     def __init__(self, screen, app):
-        
+
         self.current_element = 0
-        
+
         self.screen = screen
         self.app = app
         self.app.simulation_started = False
         self.app.menu_visible = True
         self.app.show_dme_scheme = False
         self.app.map_active = False
-        
+
         self.manager = pygame_gui.UIManager(
             (self.screen.get_width(), self.screen.get_height()), 'configuration/menu.json')
-        self.circuit_button_gen()
+        self.__circuit_button_gen()
         self.font = pygame.font.Font('fonts/menu_font.ttf', 32)
-        self.button_font=pygame.font.Font(None,18)
+        self.button_font = pygame.font.Font(None, 18)
         self.dme_scheme_image = pygame.image.load('images/scheme_dme.png')
         self.map_image = pygame.image.load('images/map.png')
         self.beacon_image = pygame.image.load('images/DME.png')
@@ -263,8 +291,8 @@ class Menu:
             self.menu_image, (self.screen.get_width(), self.screen.get_height()))
         self.options = ('Simulation', 'Map', 'Circuit',
                         'Circuit description', 'Exit')
-        
-    def circuit_button_gen(self):
+
+    def __circuit_button_gen(self):
         self.app.button_on = False
 
         self.buttons = []
@@ -293,37 +321,39 @@ class Menu:
         elif self.current_element == 4:
             pygame.quit()
             quit()
-                
+
     def handle_events(self, event):
-        #кнопки
+        # кнопки
         if event.type == pygame.USEREVENT:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                 if self.app.show_dme_scheme:
-                    for i,option in enumerate(SCHEME_OPTIONS):
+                    for i, option in enumerate(SCHEME_OPTIONS):
                         if event.ui_element == self.buttons[i]:
-                            self.app.button_on=True
-                            self.current_button=i
-                            
+                            self.app.button_on = True
+                            self.current_button = i
 
-                    
         if event.type == pygame.KEYDOWN:
 
             if event.key == pygame.K_ESCAPE:
                 if self.app.button_on:
-                    self.app.button_on=False
+                    self.app.button_on = False
                 else:
                     self.app.menu_visible = True
                     self.app.simulation_started = False
                     self.app.show_dme_scheme = False
                     self.app.map_active = False
-                
+
             if self.app.menu_visible:
                 if event.key == pygame.K_UP:
                     if self.current_element > 0:
                         self.current_element -= 1
+                    else:
+                        self.current_element=len(self.options)-1
                 elif event.key == pygame.K_DOWN:
                     if self.current_element < len(self.options)-1:
                         self.current_element += 1
+                    else:
+                        self.current_element=0
                 elif event.key == pygame.K_RETURN:
                     self.select_option()
 
@@ -337,14 +367,14 @@ class Menu:
                         DMEStation.selected_beacon = i
                         break
             if self.app.menu_visible:
-                    for i, option in enumerate(self.options):
-                        text = self.font.render(option, True, (0, 0, 0))
-                        text_rect = text.get_rect(center=(300, 225 + i * 55))
-                        if text_rect.collidepoint(event.pos):
-                            
-                            self.current_element = i
-                            self.select_option()
-                            break
+                for i, option in enumerate(self.options):
+                    text = self.font.render(option, True, (0, 0, 0))
+                    text_rect = text.get_rect(center=(300, 225 + i * 55))
+                    if text_rect.collidepoint(event.pos):
+
+                        self.current_element = i
+                        self.select_option()
+                        break
             if self.app.button_on:
                 if not self.button_rect.collidepoint(event.pos):
                     self.app.button_on = False
@@ -364,9 +394,7 @@ class Menu:
         self.manager.process_events(event)
 
     def draw(self):
-        
-            
-        
+
         if self.app.menu_visible:
             self.screen.blit(self.menu_image, (0, 0))
             font = pygame.font.Font('fonts/menu_font.ttf', 32)
@@ -377,7 +405,7 @@ class Menu:
             text4 = font1.render("by RRysovets", True, (225, 235, 255))
             text_rect4 = text4.get_rect(center=(1115, 790))
             self.screen.blit(text4, text_rect4)
-            
+
             for i, option in enumerate(self.options):
                 color = (255, 255, 255) if i == self.current_element else (
                     100, 100, 100)
@@ -389,11 +417,16 @@ class Menu:
 
             self.screen.blit(self.dme_scheme_image, (0, 0))
             self.manager.draw_ui(self.screen)
+            time_delta = self.app.clock.tick(60) / 100.0
+            self.manager.update(time_delta)
             if self.app.button_on:
-                self.text = self.button_font.render(CIRCUIT_DESCRIPTIONS[self.current_button], True,(0,0,0),(247,240,255))
-                self.button_rect=pygame.draw.rect(self.screen,(247,240,255),(100,100,1000,600))
-                pygame.draw.rect(self.screen,(0,0,0),(100,100,1000,600),4)
-                self.screen.blit(self.text, ((110,110),(980,580)),)
+                self.text = self.button_font.render(
+                    CIRCUIT_DESCRIPTIONS[self.current_button], True, (0, 0, 0), (247, 240, 255))
+                self.button_rect = pygame.draw.rect(
+                    self.screen, (247, 240, 255), (100, 100, 1000, 600))
+                pygame.draw.rect(self.screen, (0, 0, 0),
+                                 (100, 100, 1000, 600), 4)
+                self.screen.blit(self.text, ((110, 110), (980, 580)),)
 
         if self.app.map_active:
             self.screen.blit(self.map_image, (0, 0))
@@ -410,12 +443,13 @@ class Menu:
                     center=(beacon[0] + self.beacon_image.get_width() / 2, beacon[1] - 20))
                 self.screen.blit(frequency_text_render, frequency_text_rect)
 
-    def update(self, time_delta):
-        self.manager.update(time_delta)
+
+        
 
 
 class Aircraft:
-    def __init__(self):
+    def __init__(self,app):
+        self.app = app
         self.image = pygame.image.load('images/aircraft.png')
         self.image = pygame.transform.scale(self.image, (100, 40))
         self.x = 100
@@ -426,10 +460,9 @@ class Aircraft:
         self.acceleration = self.deceleration = 0.02
         self.turn_speed = 0.5
         self.accelerate = self.brake = self.turn_left = self.turn_right = False
-        
 
     def handle_events(self, event):
-        
+
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP:
                 self.accelerate = True
@@ -449,7 +482,7 @@ class Aircraft:
             elif event.key == pygame.K_RIGHT:
                 self.turn_right = False
 
-    def update_position(self):
+    def __update_position(self):
         self.x += self.speed * math.cos(math.radians(self.angle))
         self.y += self.speed * math.sin(math.radians(self.angle))
         if self.x > SCREEN_WIDTH:
@@ -462,7 +495,7 @@ class Aircraft:
         elif self.y < 0:
             self.y = SCREEN_HEIGHT
 
-    def update_velocity(self):
+    def __update_velocity(self):
         if self.accelerate:
             self.speed += self.acceleration
         if self.brake:
@@ -477,10 +510,13 @@ class Aircraft:
         self.speed = max(self.min_speed, min(self.max_speed, self.speed))
 
     def draw(self, screen):
-        rotated_image = pygame.transform.rotate(self.image, -self.angle)
-        new_rect = rotated_image.get_rect(
-            center=self.image.get_rect(midright=(self.x, self.y)).midright)
-        screen.blit(rotated_image, new_rect.topleft)
+        if self.app.simulation_started:
+            self.__update_position()
+            self.__update_velocity()
+            rotated_image = pygame.transform.rotate(self.image, -self.angle)
+            new_rect = rotated_image.get_rect(
+                center=self.image.get_rect(midright=(self.x, self.y)).midright)
+            screen.blit(rotated_image, new_rect.topleft)
 
 
 class DMEApp:
@@ -497,14 +533,13 @@ class DMEApp:
         self.clock = pygame.time.Clock()
         pygame.display.set_icon(icon)
         self.dme_station = DMEStation()
-        self.aircraft = Aircraft()
+        self.aircraft = Aircraft(self)
         self.pfd_indicator = PFDIndicator()
         self.ddrmi_indicator = DDRMIIndicator(
             300, self.screen_width/2.4+100, self.dme_station)
         self.menu = Menu(self.screen, self)
 
     def boolshit(self):
-        
         """вспомогательные штуки"""
         self.font = pygame.font.Font(None, 24)
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -514,30 +549,24 @@ class DMEApp:
         angle_text = f"Angle: {self.aircraft.angle:.2f}"
         angle_text_render = self.font.render(angle_text, True, (255, 255, 255))
         self.screen.blit(angle_text_render, (10, 10))
-        
-    def dogshit(self,event):
-        
-        
+
+    def dogshit(self, event):
+
         self.mouse_x, self.mouse_y = pygame.mouse.get_pos()
         if event.type == pygame.MOUSEBUTTONDOWN:
-            
-            self.a=(self.mouse_x,self.mouse_y)
+
+            self.a = (self.mouse_x, self.mouse_y)
         elif event.type == pygame.MOUSEBUTTONUP:
-            print((self.a,(abs(self.a[0]-self.mouse_x),abs(self.a[1]-self.mouse_y))),end=',\n')
-    
+            print((self.a, (abs(self.a[0]-self.mouse_x),
+                  abs(self.a[1]-self.mouse_y))), end=',\n')
+
     def handle_events(self):
         for event in pygame.event.get():
             self.aircraft.handle_events(event)
             self.menu.handle_events(event)
             self.ddrmi_indicator.handle_events(event)
-            #self.dogshit(event)
+            self.dogshit(event)
 
-    def update(self):
-        if self.simulation_started:
-            self.aircraft.update_velocity()
-            self.aircraft.update_position()
-        time_delta = self.clock.tick(60) / 100.0
-        self.menu.update(time_delta)
 
     def draw(self):
         self.background_image = pygame.image.load('images/airport.png')
@@ -549,14 +578,13 @@ class DMEApp:
         # self.ddrmi_indicator.draw(self.screen, self.aircraft)
         self.aircraft.draw(self.screen)
         self.menu.draw()
-        #self.boolshit()  # угол, координаты
+        self.boolshit()  # угол, координаты
         pygame.display.update()
 
     def run(self):
         running = True
         while running:
             self.handle_events()
-            self.update()
             self.draw()
             self.clock.tick(60)
 
