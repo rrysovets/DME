@@ -227,14 +227,15 @@ class PFDIndicator:
             str_height=f"{4000-aircraft.y:.0f}"
             
             first_pfd_text=self.height_font.render(str_height[0:2],True,(0,255,0))
-            pfd_text=self.height_font.render(str(height%98+i).zfill(2),True,(0,255,0))
+            height_2=int(str_height[2::])+i
+            pfd_text=self.height_font.render(str(height_2).zfill(2),True,(0,255,0))
             first_pfd_rect = first_pfd_text.get_rect(center=(225, 655))
             
-            wrapper_text=self.font.render(str(int(str_height[0:2])+i), True, (255, 255, 255))
+            #wrapper_text=self.font.render(str(int(str_height[0:2])+i), True, (255, 255, 255))
             
             
             screen.blit(pfd_text, (236, 613+i*10+(height%98)%10))
-            screen.blit(wrapper_text,(216, 613+i*50+(height//98)%10))
+            #screen.blit(wrapper_text,(216, 613+i*50+(height//98)%10))
             screen.blit(first_pfd_text, first_pfd_rect)
 
     def draw(self, screen, aircraft):
@@ -263,7 +264,6 @@ class PFDIndicator:
         self.vs_speed_indication(screen, aircraft)
         self.dme_indication(screen, aircraft)
         
-
 
 class Menu:
     def __init__(self, screen, app):
@@ -442,10 +442,7 @@ class Menu:
                 frequency_text_rect = frequency_text_render.get_rect(
                     center=(beacon[0] + self.beacon_image.get_width() / 2, beacon[1] - 20))
                 self.screen.blit(frequency_text_render, frequency_text_rect)
-
-
-        
-
+   
 
 class Aircraft:
     def __init__(self,app):
@@ -521,7 +518,7 @@ class Aircraft:
 
 class DMEApp:
     def __init__(self):
-
+        self.a=0,0;self.flag=False#dogshit+boolshit parameters
         pygame.init()
         self.screen_width = 1200
         self.screen_height = 800
@@ -539,7 +536,7 @@ class DMEApp:
             300, self.screen_width/2.4+100, self.dme_station)
         self.menu = Menu(self.screen, self)
 
-    def boolshit(self):
+    def boolshit(self,a):
         """вспомогательные штуки"""
         self.font = pygame.font.Font(None, 24)
         mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -549,26 +546,38 @@ class DMEApp:
         angle_text = f"Angle: {self.aircraft.angle:.2f}"
         angle_text_render = self.font.render(angle_text, True, (255, 255, 255))
         self.screen.blit(angle_text_render, (10, 10))
+        if a:
+            pygame.draw.rect(self.screen, (0, 0, 0,225), a)
 
     def dogshit(self, event):
-
+        
         self.mouse_x, self.mouse_y = pygame.mouse.get_pos()
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        
+        if event.type == pygame.MOUSEBUTTONDOWN :
 
             self.a = (self.mouse_x, self.mouse_y)
+            self.flag=True
+            
+        if event.type == pygame.MOUSEMOTION and self.flag:
+            
+            return self.a, (abs(self.a[0]-self.mouse_x),abs(self.a[1]-self.mouse_y))
+                
+            
         elif event.type == pygame.MOUSEBUTTONUP:
-            print((self.a, (abs(self.a[0]-self.mouse_x),
-                  abs(self.a[1]-self.mouse_y))), end=',\n')
+            print((self.a, (abs(self.a[0]-self.mouse_x),abs(self.a[1]-self.mouse_y))), end=',\n')
+            self.flag=False
+            return self.a, (abs(self.a[0]-self.mouse_x),abs(self.a[1]-self.mouse_y))
 
     def handle_events(self):
         for event in pygame.event.get():
             self.aircraft.handle_events(event)
             self.menu.handle_events(event)
             self.ddrmi_indicator.handle_events(event)
-            self.dogshit(event)
-
+            self.coords=(0,0,0,0)
+            self.coords=self.dogshit(event)
 
     def draw(self):
+        
         self.background_image = pygame.image.load('images/airport.png')
         self.background_image = pygame.transform.scale(
             self.background_image, (self.screen_width, self.screen_height))
@@ -578,7 +587,9 @@ class DMEApp:
         # self.ddrmi_indicator.draw(self.screen, self.aircraft)
         self.aircraft.draw(self.screen)
         self.menu.draw()
-        self.boolshit()  # угол, координаты
+        self.boolshit(self.coords)  # угол, координаты
+        
+        
         pygame.display.update()
 
     def run(self):
