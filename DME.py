@@ -4,6 +4,14 @@ from pygame import mixer
 import pygame_gui
 import os
 from data import *
+import telebot
+import g4f
+
+
+
+
+
+bot = telebot.TeleBot(token='6776346152:AAGKICqmGSVofNCpPqQNn-S_QJcMphouX1E')################бот################
 
 
 class DMEStation:
@@ -132,8 +140,8 @@ class DDRMIIndicator:
 
 
 class PFDIndicator:
-    def __init__(self):
-
+    def __init__(self,app):
+        self.app=app
         self.x = 0
         self.y = SCREEN_WIDTH/2.4
         self.horizon_image = pygame.image.load('images/PFDth/horizon.png')
@@ -141,7 +149,7 @@ class PFDIndicator:
             self.horizon_image, (300, 300))
         self.vertical_speed = 0
         self.font = pygame.font.Font(None, 15)  
-        self.height_font=pygame.font.Font(None, 18)  
+        self.height_font=pygame.font.Font(None, 20)  
         self.numbers = [self.font.render(str(abs(i)), True, (255, 255, 255)) for i in range(
             100, 400, 10)]  # Список изображений чисел от 1 до 100
         self.position = 0
@@ -212,31 +220,43 @@ class PFDIndicator:
     def height_indication(self,screen,aircraft):
         
         
-        numbers = [self.height_font.render(str(abs(i)).zfill(2), True, (0, 255, 0)) for i in range(
-            00, 100, 10)]
-        
+
         self.button_rect = pygame.draw.rect(
                     screen, (123, 142, 146), ((215, 585), (21, 135)))
-        self.button_rect = pygame.draw.rect(
-                    screen, (0, 0, 0), ((215, 645), (20, 15)))
+
         self.button_rect = pygame.draw.rect(
                     screen, (0, 0, 0), ((235, 642), (16, 22)))
-        for i in range(5):
-            
-            height=int(4000-aircraft.y)
-            str_height=f"{4000-aircraft.y:.0f}"
-            
-            first_pfd_text=self.height_font.render(str_height[0:2],True,(0,255,0))
-            height_2=int(str_height[2::])+i
-            pfd_text=self.height_font.render(str(height_2).zfill(2),True,(0,255,0))
-            first_pfd_rect = first_pfd_text.get_rect(center=(225, 655))
-            
-            #wrapper_text=self.font.render(str(int(str_height[0:2])+i), True, (255, 255, 255))
+        for i in range(3):
             
             
-            screen.blit(pfd_text, (236, 613+i*10+(height%98)%10))
-            #screen.blit(wrapper_text,(216, 613+i*50+(height//98)%10))
-            screen.blit(first_pfd_text, first_pfd_rect)
+            height=int(aircraft.y%100)
+            
+            incr=int(aircraft.y%10)/10
+
+            img_height=str(height//10%10+i+3 if height//10%10+i+3<=9 else height//10%10+i-7).ljust(2,'0')
+            
+            pfd_text=self.height_font.render(img_height,True,(0,255,0))
+            screen.blit(pfd_text, (236, 640+10*(i-incr)))
+            
+
+            #повторно используем переменные
+            incr=int(aircraft.y%100)/100
+            pos_y=613+100*(i-incr)
+            pos_x=218
+            wrapper_text=self.font.render('2'+str(int(aircraft.y//100+i)), True, (255, 255, 255))
+            line_pos_y=pos_y+30;line_pos_x=pos_x+13
+            pygame.draw.line(screen, (255, 255, 255),(line_pos_x, line_pos_y),(line_pos_x+4, line_pos_y))
+            self.button_rect = pygame.draw.rect(
+                    screen, (0, 0, 0), ((215, 645), (20, 15)))
+            
+            pfd_text=self.height_font.render('2'+str(int(aircraft.y//100)),True,(0,255,0))
+            screen.blit(pfd_text, (pos_x, 647))
+            
+            screen.blit(wrapper_text,(pos_x, pos_y+26))
+            
+            
+            
+            #screen.blit(first_pfd_text, first_pfd_rect)
 
     def draw(self, screen, aircraft):
 
@@ -267,7 +287,7 @@ class PFDIndicator:
 
 class Menu:
     def __init__(self, screen, app):
-
+        self.chat_text=''
         self.current_element = 0
 
         self.screen = screen
@@ -276,6 +296,7 @@ class Menu:
         self.app.menu_visible = True
         self.app.show_dme_scheme = False
         self.app.map_active = False
+        self.app.show_gpt=False
 
         self.manager = pygame_gui.UIManager(
             (self.screen.get_width(), self.screen.get_height()), 'configuration/menu.json')
@@ -290,7 +311,7 @@ class Menu:
         self.menu_image = pygame.transform.scale(
             self.menu_image, (self.screen.get_width(), self.screen.get_height()))
         self.options = ('Simulation', 'Map', 'Circuit',
-                        'Circuit description', 'Exit')
+                        'Circuit description', 'gpt', 'Exit')
 
     def __circuit_button_gen(self):
         self.app.button_on = False
@@ -316,13 +337,35 @@ class Menu:
             self.app.menu_visible = False
 
         elif self.current_element == 3:
+            bot.send_message(chat_id=387352688,text='тут будет инструкция')################бот################
             os.startfile('dme.pdf')
-
         elif self.current_element == 4:
-            pygame.quit()
-            quit()
+            self.app.show_gpt = True
+ 
+    
+    
 
+    def res(self,text):
+        return g4f.ChatCompletion.create(model="gpt-3.5-turbo",messages=[{"role": "user", "content": f"{text}"}],stream=True,)
+    # async def res1(self,text):
+    #     await self.res1(text)
+    
+    
+    def insert_newlines(self,string, max_line_length):
+        lines = string.split('\n')
+        for i in range(len(lines)):
+            line = lines[i]
+            if len(line) > max_line_length:
+                num_of_splits = len(line) // max_line_length
+                split_lines = [line[j*max_line_length:(j+1)*max_line_length] for j in range(num_of_splits)]
+                if len(line) % max_line_length != 0:
+                    split_lines.append(line[num_of_splits*max_line_length:])
+                lines[i] = '\n'.join(split_lines)
+        return '\n'.join(lines)
+
+    
     def handle_events(self, event):
+        
         # кнопки
         if event.type == pygame.USEREVENT:
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
@@ -342,6 +385,7 @@ class Menu:
                     self.app.simulation_started = False
                     self.app.show_dme_scheme = False
                     self.app.map_active = False
+                
 
             if self.app.menu_visible:
                 if event.key == pygame.K_UP:
@@ -390,6 +434,29 @@ class Menu:
         elif event.type == pygame.QUIT:
             pygame.quit()
             quit()
+
+        if self.app.show_gpt:
+
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    
+                    self.chat_text+='\n'
+                    
+                    response=self.res(self.chat_text)
+                    print('ответ пошёл')
+                    print(response)
+                    for message in response:
+                        self.chat_text+=message
+                    self.chat_text+='\n'
+                        
+                
+                elif event.key == pygame.K_BACKSPACE:
+                        self.chat_text = self.chat_text[:-1]
+                else:
+                    
+                    self.chat_text += event.unicode
+                    self.chat_text=self.insert_newlines(self.chat_text,100)
 
         self.manager.process_events(event)
 
@@ -442,7 +509,16 @@ class Menu:
                 frequency_text_rect = frequency_text_render.get_rect(
                     center=(beacon[0] + self.beacon_image.get_width() / 2, beacon[1] - 20))
                 self.screen.blit(frequency_text_render, frequency_text_rect)
-   
+        if self.app.show_gpt:
+            chat_text_height=110
+            
+            self.button_rect = pygame.draw.rect(self.screen, (247, 240, 255), (100, 100, 1000, 600))
+            pygame.draw.rect(self.screen, (0, 0, 0),(100, 100, 1000, 600), 4)
+            for i in self.chat_text.split('\n'):
+                self.text = self.button_font.render(i, True, (0, 0, 0), (247, 240, 255))
+                self.screen.blit(self.text, ((110, chat_text_height), (980, 580)),)
+                chat_text_height+=30
+            
 
 class Aircraft:
     def __init__(self,app):
@@ -531,7 +607,7 @@ class DMEApp:
         pygame.display.set_icon(icon)
         self.dme_station = DMEStation()
         self.aircraft = Aircraft(self)
-        self.pfd_indicator = PFDIndicator()
+        self.pfd_indicator = PFDIndicator(self)
         self.ddrmi_indicator = DDRMIIndicator(
             300, self.screen_width/2.4+100, self.dme_station)
         self.menu = Menu(self.screen, self)
@@ -573,8 +649,8 @@ class DMEApp:
             self.aircraft.handle_events(event)
             self.menu.handle_events(event)
             self.ddrmi_indicator.handle_events(event)
-            self.coords=(0,0,0,0)
-            self.coords=self.dogshit(event)
+            #self.coords=(0,0,0,0)
+            #self.coords=self.dogshit(event)           
 
     def draw(self):
         
@@ -587,10 +663,10 @@ class DMEApp:
         # self.ddrmi_indicator.draw(self.screen, self.aircraft)
         self.aircraft.draw(self.screen)
         self.menu.draw()
-        self.boolshit(self.coords)  # угол, координаты
+        #self.boolshit(self.coords)  # угол, координаты
         
         
-        pygame.display.update()
+        pygame.display.flip()
 
     def run(self):
         running = True
@@ -598,6 +674,7 @@ class DMEApp:
             self.handle_events()
             self.draw()
             self.clock.tick(60)
+
 
 
 app = DMEApp()
