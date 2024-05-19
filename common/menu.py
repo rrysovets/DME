@@ -27,7 +27,7 @@ class Menu:
         self.menu_image = pygame.transform.scale(
             self.menu_image, (self.screen.get_width(), self.screen.get_height()))
         self.options = ('Simulation', 'Map', 'Circuit',
-                        'Circuit description', 'gpt', 'Exit')
+                        'Circuit description', 'Copilot', 'Exit')
 
     def __circuit_button_gen(self):
         self.app.button_on = False
